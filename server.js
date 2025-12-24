@@ -21,6 +21,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://localhost:3000',
   'https://movie-site-mu-five.vercel.app',
+  'https://movie-review-backend-gg0v.onrender.com',  
+  'https://accounts.google.com',
   process.env.FRONTEND_URL,
   process.env.RENDER_EXTERNAL_HOSTNAME ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : null,
   ...additionalOrigins
