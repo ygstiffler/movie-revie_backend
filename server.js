@@ -30,23 +30,12 @@ const allowedOrigins = [
   .map(normalizeOrigin);
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    const normalizedOrigin = normalizeOrigin(origin);
-
-    if (allowedOrigins.includes(normalizedOrigin)) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked for origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: '*', // Allow all origins for now
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Total-Count'],
+  maxAge: 600 // Cache preflight request for 10 minutes
 };
 
 const corsMiddleware = cors(corsOptions);

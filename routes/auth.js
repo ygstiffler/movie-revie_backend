@@ -102,60 +102,102 @@ router.post("/login", async (req, res) => {
 
 // Google OAuth
 router.post("/google", async (req, res) => {
+  console.log('Google OAuth request received');
+  
   try {
     const { credential } = req.body;
+    console.log('Request body:', req.body);
 
     if (!credential) {
-      return res.status(400).json({ message: 'Missing credential' });
+      console.error('Missing credential in request');
+      return res.status(400).json({ 
+        success: false,
+        message: 'Missing Google credential' 
+      });
     }
 
-    // Verify the Google ID token
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const { email, name, picture } = payload;
-
-    // Check if user exists
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      // Create new user if doesn't exist
-      const randomPassword = Math.random().toString(36).slice(-8);
-      const hashedPassword = await bcrypt.hash(randomPassword, 10);
-      
-      user = new User({
-        email,
-        username: name,
-        password: hashedPassword,
-        profilePicture: picture,
-        isGoogleSignIn: true
+    console.log('Verifying Google ID token...');
+    
+    try {
+      // Verify the Google ID token
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
 
-      await user.save();
-    }
+      const payload = ticket.getPayload();
+      console.log('Google payload:', {
+        email: payload.email,
+        name: payload.name,
+        email_verified: payload.email_verified
+      });
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        username: user.username,
-        profilePicture: user.profilePicture
+      if (!payload.email_verified) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email not verified by Google'
+        });
       }
-    });
+
+      const { email, name, picture } = payload;
+
+      // Check if user exists
+      let user = await User.findOne({ email });
+      console.log('User found in database:', user ? 'Yes' : 'No');
+
+      if (!user) {
+        console.log('Creating new user...');
+        // Create new user if doesn't exist
+        const randomPassword = Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(randomPassword, 10);
+        
+        user = new User({
+          email,
+          username: name,
+          password: hashedPassword,
+          profilePicture: picture,
+          isGoogleSignIn: true
+        });
+
+        await user.save();
+        console.log('New user created:', user._id);
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      console.log('Authentication successful for user:', user.email);
+      
+      res.json({
+        success: true,
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          profilePicture: user.profilePicture
+        }
+      });
+      
+    } catch (googleError) {
+      console.error('Google token verification error:', googleError);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid Google token',
+        error: googleError.message
+      });
+    }
   } catch (error) {
-    console.error('Google auth error:', error);
-    res.status(500).json({ message: 'Error authenticating with Google', error: error.message });
+    console.error('Server error during Google auth:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during authentication',
+      error: error.message 
+    });
   }
 });
 
