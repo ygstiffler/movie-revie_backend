@@ -1,0 +1,45 @@
+services:
+  # Web Service
+  - type: web
+    name: movie-review-api
+    env: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - fromGroup: mongo-settings
+      - fromGroup: auth-settings
+      - fromGroup: frontend-settings
+
+  # MongoDB Service
+  - type: pserv
+    name: movie-review-db
+    env: mongo
+    plan: free
+    envVars:
+      - key: MONGO_URL
+        value: ${movie-review-db.MONGO_URL}
+
+envGroups:
+  - name: mongo-settings
+    envVars:
+      - key: MONGO_URL
+        value: ${movie-review-db.MONGO_URL}
+        sync: false
+
+  - name: auth-settings
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+  - name: frontend-settings
+    envVars:
+      - key: FRONTEND_URL
+        value: https://your-frontend-url.vercel.app
+        sync: false
